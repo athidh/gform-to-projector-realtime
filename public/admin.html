@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Event Admin</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #e9ecef; }
+        .container { display: flex; gap: 20px; }
+        .column { flex: 1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; color: #333; }
+        
+        .card { border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card strong { display: block; font-size: 1.1em; color: #2c3e50; }
+        .card p { margin: 5px 0 15px 0; color: #555; line-height: 1.4; }
+        
+        /* Button Styling */
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+
+        .btn-approve { background: #28a745; color: white; } /* Green */
+        .btn-decline { background: #dc3545; color: white; } /* Red */
+        .btn-project { background: #007bff; color: white; width: 100%; } /* Blue */
+
+        .empty-msg { color: #aaa; text-align: center; font-style: italic; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Q&A Control Room</h1>
+    
+    <div class="container">
+        <div class="column">
+            <h2>Incoming (Pending)</h2>
+            <div id="incoming-list"></div>
+        </div>
+
+        <div class="column">
+            <h2>Ready to Project</h2>
+            <div id="approved-list"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // Listen for new lists
+        socket.on('refresh_data', (data) => {
+            renderIncoming(data.pending);
+            renderApproved(data.approved);
+        });
+
+        function renderIncoming(questions) {
+            const container = document.getElementById('incoming-list');
+            container.innerHTML = ''; 
+
+            if (questions.length === 0) {
+                container.innerHTML = '<p class="empty-msg">No pending questions.</p>';
+                return;
+            }
+
+            questions.forEach(q => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <strong>${q.name}</strong>
+                    <p>${q.question}</p>
+                    <div class="btn-group">
+                        <button class="btn-approve" onclick="approve(${q.id})">Approve</button>
+                        <button class="btn-decline" onclick="decline(${q.id})">Decline</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderApproved(questions) {
+            const container = document.getElementById('approved-list');
+            container.innerHTML = '';
+
+            if (questions.length === 0) {
+                container.innerHTML = '<p class="empty-msg">No approved questions ready.</p>';
+                return;
+            }
+
+            questions.forEach(q => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <strong>${q.name}</strong>
+                    <p>${q.question}</p>
+                    <button class="btn-project" onclick="project(${q.id})">PROJECT TO SCREEN 🚀</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Actions
+        function approve(id) { socket.emit('admin_approve', id); }
+        function decline(id) { socket.emit('admin_decline', id); }
+        function project(id) { socket.emit('admin_project', id); }
+
+    </script>
+</body>
+</html>
