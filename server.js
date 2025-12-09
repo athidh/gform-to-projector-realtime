@@ -4,26 +4,47 @@ const { Server } = require("socket.io");
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 
-// Check if running on Cloud (Render) or Local
-let creds;
-if (process.env.GOOGLE_CREDS) {
-    creds = JSON.parse(process.env.GOOGLE_CREDS);
-} else {
-    creds = require('./credentials.json');
-}
-
-// Config
-const SPREADSHEET_ID = '1OScVjosJawwaMzfs20Ic8giS-WI_2SqeDMMij1XSOqs'; 
-const SHEET_POLL_INTERVAL = 5000; 
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// --- 🔍 DEBUGGING SECTION 🔍 ---
+console.log("------------------------------------------------");
+console.log(" [STARTUP] Checking for Credentials...");
+
+let creds;
+
+try {
+    // 1. Check if Render Environment Variable exists
+    if (process.env.GOOGLE_CREDS) {
+        console.log(" [DEBUG] Found GOOGLE_CREDS variable. Length:", process.env.GOOGLE_CREDS.length);
+        creds = JSON.parse(process.env.GOOGLE_CREDS);
+        console.log(" [SUCCESS] Credentials parsed successfully from Environment!");
+    } 
+    // 2. Fallback to Local File (for your laptop)
+    else {
+        console.log(" [DEBUG] GOOGLE_CREDS not found. Looking for local file...");
+        creds = require('./credentials.json');
+        console.log(" [SUCCESS] Credentials loaded from local file.");
+    }
+} catch (error) {
+    console.error(" [CRITICAL ERROR] Could not load credentials!");
+    console.error(" Reason:", error.message);
+    console.error(" FIX: Go to Render Dashboard -> Environment -> Add 'GOOGLE_CREDS' again.");
+    process.exit(1); // Stop server intentionally if keys are missing
+}
+console.log("------------------------------------------------");
+
+
+// --- YOUR CONFIG ---
+const SPREADSHEET_ID = '1OScVjosJawwaMzfs20Ic8giS-WI_2SqeDMMij1XSOqs'; 
+const SHEET_POLL_INTERVAL = 5000; 
 
 app.use(express.static('public'));
 
 let localQuestions = []; 
 
+// --- CONNECT TO GOOGLE ---
 const serviceAccountAuth = new JWT({
   email: creds.client_email,
   key: creds.private_key,
@@ -43,7 +64,6 @@ async function checkSheet() {
         const newCount = rows.length - localQuestions.length;
         console.log(`Found ${newCount} new questions.`);
 
-        // Add only the new rows to our local memory
         for (let i = localQuestions.length; i < rows.length; i++) {
             localQuestions.push({
                 id: i, 
