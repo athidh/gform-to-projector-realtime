@@ -1,0 +1,19 @@
+{
+  "name": "eventsystem",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^5.2.1",
+    "google-auth-library": "^10.5.0",
+    "google-spreadsheet": "^5.0.2",
+    "socket.io": "^4.8.1"
+  }
+}

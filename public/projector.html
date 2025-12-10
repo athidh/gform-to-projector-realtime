@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NEURAL LINK 4000</title>
+    <!-- Import Map to handle bare imports safely without NPM build -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "postprocessing": "https://unpkg.com/postprocessing@6.33.3/build/index.js"
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Audiowide&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #bg-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            /* Let mouse pass through to canvas */
+        }
+
+        /* HUD Elements */
+        .hud-corner {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            border: 4px solid rgba(0, 255, 242, 0.5);
+            pointer-events: none;
+            box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
+        }
+
+        .top-left {
+            top: 40px;
+            left: 40px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .top-right {
+            top: 40px;
+            right: 40px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .bottom-left {
+            bottom: 40px;
+            left: 40px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .bottom-right {
+            bottom: 40px;
+            right: 40px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .hud-line {
+            position: absolute;
+            top: 120px;
+            left: 5%;
+            width: 90%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 242, 0.8) 50%, transparent 100%);
+            box-shadow: 0 0 10px rgba(0, 255, 242, 0.8);
+        }
+
+        .hud-bottom-line {
+            position: absolute;
+            bottom: 120px;
+            left: 15%;
+            width: 70%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 159, 252, 0.8) 50%, transparent 100%);
+        }
+
+        /* Main Content */
+        #content-wrapper {
+            /* FIXED SIZE / STATIC BOX */
+            width: 80vw;
+            height: 60vh;
+
+            /* Center Content Inside */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            text-align: center;
+            opacity: 0;
+            filter: blur(20px);
+            transform: scale(0.95);
+            transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+
+            /* INITIAL STATE: Transparent */
+            background: rgba(255, 255, 255, 0);
+            border: 1px solid rgba(255, 255, 255, 0.0);
+            border-radius: 16px;
+            box-shadow: none;
+            backdrop-filter: blur(0px);
+
+            /* Slower transition for the glass fade-in */
+            transition:
+                opacity 0.8s ease,
+                transform 0.8s ease,
+                filter 0.8s ease,
+                background 2.0s ease,
+                border-color 2.0s ease,
+                box-shadow 2.0s ease,
+                backdrop-filter 2.0s ease;
+        }
+
+        #content-wrapper.active {
+            opacity: 1;
+            filter: blur(0px);
+            transform: scale(1);
+        }
+
+        /* GLASS MODE (readable) */
+        #content-wrapper.readable {
+            /* Glassmorphism: Semi-transparent white/blue tint */
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            /* Reduced Blur */
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-family: 'Audiowide', sans-serif;
+            /* Year 4000 Tech Font */
+            font-weight: 400;
+            /* Audiowide only has 400 */
+            font-size: 6rem;
+            line-height: 1.2;
+            margin: 0 0 40px 0;
+            color: #fff;
+
+            /* Clean Shadow */
+            text-shadow: 0 0 20px rgba(0, 255, 242, 0.5);
+            letter-spacing: 2px;
+        }
+
+        .author-tag {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #FF9FFC;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 0px #000;
+            /* Outline effect */
+
+            display: inline-block;
+            border: 2px solid rgba(255, 159, 252, 0.5);
+            padding: 15px 50px;
+            background: rgba(0, 0, 0, 0.0);
+            /* Initially transparent name bg */
+            border-radius: 4px;
+            transition: background 1.5s ease;
+        }
+
+        #content-wrapper.readable .author-tag {
+            background: rgba(0, 0, 0, 0.6);
+            /* Readable name bg */
+        }
+
+        .waiting {
+            font-family: 'Orbitron';
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 2rem;
+            letter-spacing: 4px;
+            animation: pulse 2s infinite;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+
+            100% {
+                opacity: 0.3;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="bg-container"></div>
+
+    <div id="ui-layer">
+
+        <!-- HUD Decorations -->
+        <div class="hud-line"></div>
+        <div class="hud-bottom-line"></div>
+
+        <div id="waiting-msg" class="waiting">
+            AWAITING NEURAL TRANSMISSION...
+        </div>
+
+        <div id="content-wrapper">
+            <h1 id="q-text"></h1>
+            <div id="q-author" class="author-tag"></div>
+        </div>
+    </div>
+
+    <!-- 1. Socket Logic (Runs Independently of Graphics) -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const wrapper = document.getElementById('content-wrapper');
+        const waiting = document.getElementById('waiting-msg');
+        const qText = document.getElementById('q-text');
+        const qAuthor = document.getElementById('q-author');
+
+        console.log("Socket Client Initialized");
+
+        // --- SEAMLESS MORPH ANIMATION ---
+        function morphText(element, newText, callback, speed = 20) {
+            const originalTextIn = element.innerText; // Current text (Text A)
+            const cycles = 15; // How many scramble frames before swapping
+            const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()_+1234567890";
+
+            let frame = 0;
+
+            // Clear any existing interval
+            if (element.dataset.interval) clearInterval(parseInt(element.dataset.interval));
+
+            const interval = setInterval(() => {
+                frame++;
+
+                // PHASE 1: SCRAMBLE OUT (Text A -> Chaos)
+                if (frame <= cycles) {
+                    element.innerText = originalTextIn.split("").map((char, i) => {
+                        if (char === " ") return " ";
+                        // Increase scramble probability each frame
+                        if (Math.random() < (frame / cycles)) {
+                            return characters[Math.floor(Math.random() * characters.length)];
+                        }
+                        return char;
+                    }).join("");
+                }
+
+                // PHASE 2: SWAP (Chaos A -> Chaos B)
+                // We perform the LENGTH SWAP exactly at the cycle point
+                else if (frame === cycles + 1) {
+                    // Create a scrambled version of the NEW text length
+                    element.innerText = newText.split("").map(c =>
+                        c === " " ? " " : characters[Math.floor(Math.random() * characters.length)]
+                    ).join("");
+                }
+
+                // PHASE 3: RESOLVE (Chaos B -> Text B)
+                else {
+                    const progress = frame - (cycles + 1);
+                    // SLOW DOWN IN-ANIMATION: 
+                    // Previously * 1.5. Now * 3.0 to make the reveal take 3x as many frames as the scramble.
+                    const totalResolveFrames = cycles * 3.0;
+
+                    element.innerText = newText.split("").map((char, i) => {
+                        if (char === " ") return " ";
+
+                        // Percentage of string to reveal based on progress
+                        if (i < (newText.length * (progress / totalResolveFrames))) {
+                            return newText[i];
+                        }
+                        return characters[Math.floor(Math.random() * characters.length)];
+                    }).join("");
+
+                    // FINISH
+                    if (progress >= totalResolveFrames) {
+                        clearInterval(interval);
+                        element.innerText = newText; // Ensure clean state
+                        if (callback) callback();
+                    }
+                }
+
+            }, speed);
+
+            element.dataset.interval = interval;
+        }
+
+        socket.on('project_live', (data) => {
+            console.log("Morphing to:", data);
+
+            // 1. DISABLE GLASS IMMEDIATELY
+            wrapper.classList.remove('readable');
+
+            // 2. Trigger Morph Sequence
+            morphText(qText, data.question, () => {
+                // Callback when animation finishes (Text is clean)
+
+                // 3. ENABLE GLASS (Small Delay 0.5s)
+                setTimeout(() => {
+                    wrapper.classList.add('readable');
+                }, 500);
+
+            }, 30); // 30ms speed (faster than 40)
+
+            // Update Author Name ANIMATED
+            morphText(qAuthor, "USER: " + data.name, null, 30);
+
+            // Optional: Trigger a background pulse for impact
+            // Manual Trigger Removed (Background loops automatically now)
+
+            // Ensure wrapper is visible
+            wrapper.classList.add('active');
+            waiting.style.display = 'none';
+        });
+    </script>
+
+    <!-- 2. Visuals Module (Runs only if supported) -->
+    <script type="module">
+        import { initGridScan } from './grid-scan.js';
+
+        // Init Background
+        try {
+            const bgContainer = document.getElementById('bg-container');
+            initGridScan(bgContainer);
+            console.log("Neural Grid Initialized Successfully");
+        } catch (e) {
+            console.error("Graphics Init Failed:", e);
+            // Fallback: Black background is already default
+        }
+    </script>
+</body>
+
+</html>
